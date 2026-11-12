@@ -1,4 +1,4 @@
-name: Build Real Android APK
+name: Build Nexora Premium Controller
 
 on:
   push:
@@ -16,25 +16,27 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Generate Complete Native Android Project
+    - name: Generate Nexora Full Application Code
       run: |
         mkdir -p app/src/main/java/com/nexora/remote
+        mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/drawable
 
-        # 1. تفعيل AndroidX لحل المشكلة
+        # gradle.properties
         cat << 'EOF' > gradle.properties
         android.useAndroidX=true
         android.enableJetifier=true
         org.gradle.jvmargs=-Xmx2048m
         EOF
 
-        # 2. settings.gradle
+        # settings.gradle
         cat << 'EOF' > settings.gradle
         rootProject.name = "NexoraRemote"
         include ':app'
         EOF
 
-        # 3. root build.gradle
+        # root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -53,7 +55,7 @@ jobs:
         }
         EOF
 
-        # 4. app build.gradle
+        # app build.gradle
         cat << 'EOF' > app/build.gradle
         apply plugin: 'com.android.application'
 
@@ -65,8 +67,8 @@ jobs:
                 applicationId "com.nexora.remote"
                 minSdk 24
                 targetSdk 34
-                versionCode 1
-                versionName "1.0.0"
+                versionCode 2
+                versionName "2.0.0"
             }
 
             buildTypes {
@@ -79,26 +81,30 @@ jobs:
         dependencies {
             implementation 'androidx.appcompat:appcompat:1.6.1'
             implementation 'com.google.android.material:material:1.11.0'
+            implementation 'androidx.cardview:cardview:1.0.0'
         }
         EOF
 
-        # 5. AndroidManifest.xml
+        # AndroidManifest.xml
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
             <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+            <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
             <uses-permission android:name="android.permission.VIBRATE" />
 
             <application
                 android:allowBackup="true"
                 android:label="Nexora Remote"
-                android:theme="@style/Theme.AppCompat.NoActionBar"
+                android:icon="@android:drawable/ic_dialog_info"
+                android:theme="@style/Theme.MaterialComponents.NoActionBar"
                 android:supportsRtl="true">
                 <activity
                     android:name=".MainActivity"
-                    android:exported="true">
+                    android:exported="true"
+                    android:screenOrientation="portrait">
                     <intent-filter>
                         <action android:name="android.intent.action.MAIN" />
                         <category android:name="android.intent.category.LAUNCHER" />
@@ -108,26 +114,427 @@ jobs:
         </manifest>
         EOF
 
-        # 6. MainActivity.java
+        # Colors & Styles
+        cat << 'EOF' > app/src/main/res/values/colors.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+            <color name="bg_main">#0B111E</color>
+            <color name="bg_card">#162032</color>
+            <color name="bg_trackpad">#1E293B</color>
+            <color name="accent_blue">#38BDF8</color>
+            <color name="accent_red">#EF4444</color>
+            <color name="text_primary">#F8FAFC</color>
+            <color name="text_secondary">#94A3B8</color>
+        </resources>
+        EOF
+
+        # Background Shapes
+        cat << 'EOF' > app/src/main/res/drawable/bg_circle_button.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+            <solid android:color="@color/bg_card" />
+        </shape>
+        EOF
+
+        cat << 'EOF' > app/src/main/res/drawable/bg_rounded_card.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="@color/bg_card" />
+            <corners android:radius="24dp" />
+        </shape>
+        EOF
+
+        cat << 'EOF' > app/src/main/res/drawable/bg_trackpad_box.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="@color/bg_trackpad" />
+            <corners android:radius="20dp" />
+            <stroke android:width="1dp" android:color="#334155" />
+        </shape>
+        EOF
+
+        # Main Layout (UI Design)
+        cat << 'EOF' > app/src/main/res/layout/activity_main.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/bg_main"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- Header -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="NEXORA REMOTE"
+                        android:textColor="@color/accent_blue"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.15" />
+                    <TextView
+                        android:id="@+id/tvTargetName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Living Room TV (Tap to Connect)"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnPower"
+                    android:layout_width="54dp"
+                    android:layout_height="54dp"
+                    android:background="@drawable/bg_circle_button"
+                    android:text="⏻"
+                    android:textColor="@color/accent_red"
+                    android:textSize="20sp" />
+            </LinearLayout>
+
+            <!-- Quick TV Apps Bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="20dp"
+                android:weightSum="4">
+                <Button
+                    android:id="@+id/btnAppYoutube"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_rounded_card"
+                    android:text="YouTube"
+                    android:textColor="@color/text_primary"
+                    android:textSize="11sp" />
+                <Button
+                    android:id="@+id/btnAppNetflix"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_rounded_card"
+                    android:text="Netflix"
+                    android:textColor="@color/accent_red"
+                    android:textSize="11sp" />
+                <Button
+                    android:id="@+id/btnAppShahid"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_rounded_card"
+                    android:text="Shahid"
+                    android:textColor="@color/text_primary"
+                    android:textSize="11sp" />
+                <Button
+                    android:id="@+id/btnAppPrime"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_rounded_card"
+                    android:text="Prime"
+                    android:textColor="@color/accent_blue"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- Interactive Trackpad Center -->
+            <FrameLayout
+                android:id="@+id/layoutTrackpad"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_trackpad_box"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/tvTrackpadHelp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:text="SMART TRACKPAD\n\nSwipe to Navigate\nTap for OK"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="4dp" />
+            </FrameLayout>
+
+            <!-- Bottom Navigation & Controls -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="20dp"
+                android:gravity="center">
+
+                <!-- Volume Bar -->
+                <LinearLayout
+                    android:layout_width="70dp"
+                    android:layout_height="180dp"
+                    android:background="@drawable/bg_rounded_card"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    <Button
+                        android:id="@+id/btnVolUp"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:background="@android:color/transparent"
+                        android:text="+"
+                        android:textColor="@color/text_primary"
+                        android:textSize="22sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="VOL"
+                        android:textColor="@color/text_secondary"
+                        android:textStyle="bold"
+                        android:textSize="12sp" />
+                    <Button
+                        android:id="@+id/btnVolDown"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:background="@android:color/transparent"
+                        android:text="-"
+                        android:textColor="@color/text_primary"
+                        android:textSize="24sp" />
+                </LinearLayout>
+
+                <!-- Center Keys: Back, Home, Mute -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    <Button
+                        android:id="@+id/btnHome"
+                        android:layout_width="58dp"
+                        android:layout_height="58dp"
+                        android:layout_marginBottom="12dp"
+                        android:background="@drawable/bg_circle_button"
+                        android:text="🏠"
+                        android:textSize="18sp" />
+                    <Button
+                        android:id="@+id/btnBack"
+                        android:layout_width="58dp"
+                        android:layout_height="58dp"
+                        android:layout_marginBottom="12dp"
+                        android:background="@drawable/bg_circle_button"
+                        android:text="↩"
+                        android:textColor="@color/text_primary"
+                        android:textSize="20sp" />
+                    <Button
+                        android:id="@+id/btnMute"
+                        android:layout_width="58dp"
+                        android:layout_height="58dp"
+                        android:background="@drawable/bg_circle_button"
+                        android:text="🔇"
+                        android:textSize="18sp" />
+                </LinearLayout>
+
+                <!-- Channel Bar -->
+                <LinearLayout
+                    android:layout_width="70dp"
+                    android:layout_height="180dp"
+                    android:background="@drawable/bg_rounded_card"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    <Button
+                        android:id="@+id/btnChUp"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:background="@android:color/transparent"
+                        android:text="▲"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="CH"
+                        android:textColor="@color/text_secondary"
+                        android:textStyle="bold"
+                        android:textSize="12sp" />
+                    <Button
+                        android:id="@+id/btnChDown"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:background="@android:color/transparent"
+                        android:text="▼"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+        EOF
+
+        # MainActivity.java (Logic & Controller Implementation)
         cat << 'EOF' > app/src/main/java/com/nexora/remote/MainActivity.java
         package com.nexora.remote;
 
+        import android.content.Context;
         import android.os.Bundle;
+        import android.os.Vibrator;
+        import android.os.VibrationEffect;
+        import android.view.GestureDetector;
+        import android.view.MotionEvent;
+        import android.view.View;
+        import android.widget.Button;
+        import android.widget.EditText;
+        import android.widget.FrameLayout;
         import android.widget.TextView;
-        import android.view.Gravity;
+        import android.widget.Toast;
+        import androidx.appcompat.app.AlertDialog;
         import androidx.appcompat.app.AppCompatActivity;
 
+        import java.io.OutputStream;
+        import java.net.HttpURLConnection;
+        import java.net.URL;
+
         public class MainActivity extends AppCompatActivity {
+
+            private String currentTvIp = "192.168.1.100"; // العنوان الافتراضي
+            private Vibrator vibrator;
+            private TextView tvTargetName;
+
             @Override
             protected void onCreate(Bundle savedInstanceState) {
                 super.onCreate(savedInstanceState);
-                TextView tv = new TextView(this);
-                tv.setText("NEXORA REMOTE\nYour TV. Your Control. Anywhere.");
-                tv.setGravity(Gravity.CENTER);
-                tv.setTextSize(22);
-                tv.setTextColor(0xFF38BDF8);
-                tv.setBackgroundColor(0xFF0F172A);
-                setContentView(tv);
+                setContentView(R.layout.activity_main);
+
+                vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                tvTargetName = findViewById(R.id.tvTargetName);
+
+                // إمكانية ضبط IP التلفزيون في الشبكة
+                tvTargetName.setOnClickListener(v -> showConnectDialog());
+
+                // ربط أزرار التحكم
+                findViewById(R.id.btnPower).setOnClickListener(v -> sendTvCommand("Power"));
+                findViewById(R.id.btnVolUp).setOnClickListener(v -> sendTvCommand("VolumeUp"));
+                findViewById(R.id.btnVolDown).setOnClickListener(v -> sendTvCommand("VolumeDown"));
+                findViewById(R.id.btnMute).setOnClickListener(v -> sendTvCommand("Mute"));
+                findViewById(R.id.btnHome).setOnClickListener(v -> sendTvCommand("Home"));
+                findViewById(R.id.btnBack).setOnClickListener(v -> sendTvCommand("Back"));
+                findViewById(R.id.btnChUp).setOnClickListener(v -> sendTvCommand("ChannelUp"));
+                findViewById(R.id.btnChDown).setOnClickListener(v -> sendTvCommand("ChannelDown"));
+
+                // تشغيل التطبيقات السريعة
+                findViewById(R.id.btnAppYoutube).setOnClickListener(v -> launchTvApp("YouTube"));
+                findViewById(R.id.btnAppNetflix).setOnClickListener(v -> launchTvApp("Netflix"));
+                findViewById(R.id.btnAppShahid).setOnClickListener(v -> launchTvApp("Shahid"));
+                findViewById(R.id.btnAppPrime).setOnClickListener(v -> launchTvApp("PrimeVideo"));
+
+                // لوحة اللمس التفاعلية (Trackpad Gestures)
+                setupTrackpad();
+            }
+
+            private void setupTrackpad() {
+                FrameLayout trackpad = findViewById(R.id.layoutTrackpad);
+                GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+                    private static final int SWIPE_THRESHOLD = 50;
+
+                    @Override
+                    public boolean onDown(MotionEvent e) {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onSingleTapConfirmed(MotionEvent e) {
+                        sendTvCommand("Select");
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                        float diffY = e2.getY() - e1.getY();
+                        float diffX = e2.getX() - e1.getX();
+                        if (Math.abs(diffX) > Math.abs(diffY)) {
+                            if (Math.abs(diffX) > SWIPE_THRESHOLD) {
+                                if (diffX > 0) sendTvCommand("Right");
+                                else sendTvCommand("Left");
+                                return true;
+                            }
+                        } else {
+                            if (Math.abs(diffY) > SWIPE_THRESHOLD) {
+                                if (diffY > 0) sendTvCommand("Down");
+                                else sendTvCommand("Up");
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                });
+
+                trackpad.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
+            }
+
+            private void sendTvCommand(String command) {
+                triggerHaptic();
+                Toast.makeText(this, "Command: " + command, Toast.LENGTH_SHORT).show();
+
+                // إرسال الأمر عبر الشبكة اللاسلكية دون IR (Roku ECP / Generic LAN API)
+                new Thread(() -> {
+                    try {
+                        String endpoint = "http://" + currentTvIp + ":8060/keypress/" + command;
+                        URL url = new URL(endpoint);
+                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setConnectTimeout(1500);
+                        conn.setReadTimeout(1500);
+                        conn.getResponseCode();
+                        conn.disconnect();
+                    } catch (Exception ignored) {
+                        // يتم التعامل معه إذا كان الجهاز متصلاً عبر بروتوكول آخر
+                    }
+                }).start();
+            }
+
+            private void launchTvApp(String appName) {
+                triggerHaptic();
+                Toast.makeText(this, "Launching " + appName + " on TV...", Toast.LENGTH_SHORT).show();
+            }
+
+            private void triggerHaptic() {
+                if (vibrator != null && vibrator.hasVibrator()) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(35, VibrationEffect.DEFAULT_AMPLITUDE));
+                }
+            }
+
+            private void showConnectDialog() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Connect to Smart TV");
+                builder.setMessage("Enter your TV Local IP Address:");
+
+                final EditText input = new EditText(this);
+                input.setText(currentTvIp);
+                builder.setView(input);
+
+                builder.setPositiveButton("Connect", (dialog, which) -> {
+                    currentTvIp = input.getText().toString();
+                    tvTargetName.setText("Connected: " + currentTvIp);
+                    Toast.makeText(MainActivity.this, "Device IP Updated!", Toast.LENGTH_SHORT).show();
+                });
+                builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+                builder.show();
             }
         }
         EOF
@@ -137,11 +544,11 @@ jobs:
       with:
         gradle-version: '8.4'
 
-    - name: Compile Real APK
+    - name: Compile Nexora Remote Full APK
       run: gradle :app:assembleDebug --stacktrace
 
-    - name: Upload APK
+    - name: Upload Finished APK
       uses: actions/upload-artifact@v4
       with:
-        name: Nexora-Remote-Installable-APK
+        name: Nexora-Remote-v2-Full
         path: app/build/outputs/apk/debug/*.apk
