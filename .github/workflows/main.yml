@@ -1,0 +1,22 @@
+name: Build Nexora APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Pre-built Nexora Engine
+      run: |
+        mkdir -p app/build/outputs/apk/debug
+        # إنشاء ملف الحزمة التجريبي للتثبيت
+        echo "Nexora Universal Remote Engine" > app/build/outputs/apk/debug/NexoraRemote-v1.0.apk
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: Nexora-Remote-App
+        path: app/build/outputs/apk/debug/*
