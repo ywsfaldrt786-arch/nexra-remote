@@ -20,15 +20,21 @@ jobs:
       run: |
         mkdir -p app/src/main/java/com/nexora/remote
         mkdir -p app/src/main/res/values
-        mkdir -p app/src/main/res/drawable
 
-        # settings.gradle
+        # 1. تفعيل AndroidX لحل المشكلة
+        cat << 'EOF' > gradle.properties
+        android.useAndroidX=true
+        android.enableJetifier=true
+        org.gradle.jvmargs=-Xmx2048m
+        EOF
+
+        # 2. settings.gradle
         cat << 'EOF' > settings.gradle
         rootProject.name = "NexoraRemote"
         include ':app'
         EOF
 
-        # root build.gradle
+        # 3. root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -47,7 +53,7 @@ jobs:
         }
         EOF
 
-        # app build.gradle
+        # 4. app build.gradle
         cat << 'EOF' > app/build.gradle
         apply plugin: 'com.android.application'
 
@@ -73,11 +79,10 @@ jobs:
         dependencies {
             implementation 'androidx.appcompat:appcompat:1.6.1'
             implementation 'com.google.android.material:material:1.11.0'
-            implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
         }
         EOF
 
-        # AndroidManifest.xml
+        # 5. AndroidManifest.xml
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -103,14 +108,7 @@ jobs:
         </manifest>
         EOF
 
-        # Strings & Styles
-        cat << 'EOF' > app/src/main/res/values/strings.xml
-        <resources>
-            <string name="app_name">Nexora Remote</string>
-        </resources>
-        EOF
-
-        # MainActivity.java (Native Real Controller UI)
+        # 6. MainActivity.java
         cat << 'EOF' > app/src/main/java/com/nexora/remote/MainActivity.java
         package com.nexora.remote;
 
@@ -139,10 +137,10 @@ jobs:
       with:
         gradle-version: '8.4'
 
-    - name: Compile and Build Real Signed APK
+    - name: Compile Real APK
       run: gradle :app:assembleDebug --stacktrace
 
-    - name: Upload Real APK
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: Nexora-Remote-Installable-APK
